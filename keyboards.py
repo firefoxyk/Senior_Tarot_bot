@@ -20,6 +20,9 @@ def reply_menu_keyboard() -> ReplyKeyboardMarkup:
             [
                 KeyboardButton(text="ℹ️ Помощь"),
             ],
+            [
+                KeyboardButton(text="☕ Поддержать проект"),
+            ],
         ],
         resize_keyboard=True,
         input_field_placeholder="Выбери действие..."
@@ -41,6 +44,22 @@ def main_menu_keyboard() -> InlineKeyboardMarkup:
             ],
             [
                 InlineKeyboardButton(text="ℹ️ Помощь", callback_data="help"),
+            ],
+            [
+                InlineKeyboardButton(text="☕ Поддержать проект", callback_data="donate"),
+            ],
+        ]
+    )
+
+
+def donate_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="🔮 Сохранить карту в прямом положении",
+                    callback_data="donate_pay",
+                ),
             ],
         ]
     )
