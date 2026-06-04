@@ -1,5 +1,15 @@
 venv/
+.venv/
+
 .env
+.env.*
+
 __pycache__/
 *.pyc
-senior_tarot.dbsenior_tarot.db 
+
+*.db
+*.sqlite
+*.sqlite3
+
+.idea/
+.vscode/

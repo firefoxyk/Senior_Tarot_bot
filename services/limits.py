@@ -8,6 +8,7 @@ from database import (
 )
 from keyboards import reply_menu_keyboard
 from services.timezone import get_today_warsaw
+from services.users import is_unlimited_user
 
 
 async def check_daily_limit(message: Message, user: User | None = None) -> bool:
@@ -15,6 +16,9 @@ async def check_daily_limit(message: Message, user: User | None = None) -> bool:
 
     if not user:
         return False
+
+    if is_unlimited_user(user.id):
+        return True
 
     today = get_today_warsaw()
 

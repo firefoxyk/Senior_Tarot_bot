@@ -7,6 +7,7 @@ from aiogram.filters import Command
 from aiogram.types import CallbackQuery, FSInputFile, Message, User
 
 from database import update_last_daily_card_date, update_daily_card_action_dates
+from keyboards import donation_upsell_keyboard
 from services.cards import (
     BASE_DIR,
     Card,
@@ -21,6 +22,20 @@ from services.users import save_callback_user, save_message_user
 
 
 router = Router()
+
+DONATION_UPSELL_PROBABILITY = 0.2
+DONATION_UPSELL_TEXT = """
+━━━━━━━━━━━━━━
+
+☕ Если карта подняла настроение —
+можно поддержать сервер Senior Tarot.
+
+99 ₽ = примерно 3 дня жизни VPS.
+""".strip()
+
+
+def should_show_donation_upsell() -> bool:
+    return random.random() < DONATION_UPSELL_PROBABILITY
 
 
 async def send_card(
@@ -87,6 +102,12 @@ async def send_single_card(message: Message, user: User | None = None) -> None:
         title="Карта дня",
         is_reversed=is_reversed,
     )
+
+    if should_show_donation_upsell():
+        await message.answer(
+            DONATION_UPSELL_TEXT,
+            reply_markup=donation_upsell_keyboard(),
+        )
 
 
 @router.message(Command("card"))

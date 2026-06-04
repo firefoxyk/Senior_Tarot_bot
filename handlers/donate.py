@@ -1,10 +1,12 @@
 import os
+from datetime import datetime
 
 from aiogram import F, Router
 from aiogram.types import CallbackQuery, LabeledPrice, Message, PreCheckoutQuery
 
 from keyboards import donate_keyboard
-from services.users import save_callback_user, save_message_user
+from services.donations import DonationService
+from services.users import grant_unlimited_access, save_callback_user, save_message_user
 
 
 router = Router()
@@ -14,19 +16,6 @@ SUPPORT_PRICE = 9900
 SUPPORT_CURRENCY = "RUB"
 SUPPORT_TITLE = "Поддержка проекта Senior Tarot"
 SUPPORT_DESCRIPTION = "Поддержка сервера и развития проекта Senior Tarot"
-
-
-DONATE_TEXT = """
-🃏 Карта «Оплата сервера»
-
-Прямое положение:
-Сервер продолжает работать ещё один месяц.
-
-Перевёрнутое положение:
-Автор начинает переносить бота на бесплатный VPS из сомнительного Telegram-канала.
-
-Каждая поддержка на 99 ₽ помогает удерживать Senior Tarot на светлой стороне продакшена.
-""".strip()
 
 PAYMENT_TOKEN_MISSING_TEXT = """
 💳 Поддержка проекта сейчас недоступна.
@@ -46,6 +35,13 @@ SUCCESSFUL_PAYMENT_TEXT = """
 Спасибо за поддержку Senior Tarot ☕
 """.strip()
 
+UNLIMITED_ACCESS_TEXT = """
+⚡ Спасибо за поддержку!
+
+На 7 дней для тебя сняты все лимиты.
+Доступ без лимитов активен до: {unlimited_until}
+""".strip()
+
 
 def get_payment_provider_token() -> str | None:
     token = os.getenv("PAYMENT_PROVIDER_TOKEN")
@@ -56,9 +52,77 @@ def get_payment_provider_token() -> str | None:
     return token.strip() or None
 
 
+def get_server_goal_currency() -> str:
+    return os.getenv("SERVER_MONTHLY_GOAL_CURRENCY", SUPPORT_CURRENCY).strip() or SUPPORT_CURRENCY
+
+
+def format_amount_minor(amount_minor: int) -> str:
+    major = amount_minor // 100
+    minor = amount_minor % 100
+
+    if minor:
+        return f"{major}.{minor:02d}"
+
+    return str(major)
+
+
+def format_unlimited_until(value: str) -> str:
+    try:
+        unlimited_until = datetime.fromisoformat(value)
+    except ValueError:
+        return value
+
+    return unlimited_until.strftime("%Y-%m-%d до %H:%M")
+
+
+def build_donate_text() -> str:
+    currency = get_server_goal_currency()
+    progress = DonationService.get_monthly_server_progress(currency)
+
+    return f"""
+🃏 Карта «Оплата сервера»
+
+Прямое положение:
+Сервер продолжает работать ещё один месяц.
+
+Перевёрнутое положение:
+Автор начинает переносить бота на бесплатный VPS из сомнительного Telegram-канала.
+
+Каждая поддержка на 99 ₽ помогает удерживать Senior Tarot на светлой стороне продакшена.
+
+🖥 Сервер месяца
+Собрано: {format_amount_minor(progress.collected_minor)} ₽ из {format_amount_minor(progress.goal_minor)} ₽
+{progress.progress_bar} {progress.percent}%
+""".strip()
+
+
+def get_payment_id(message: Message) -> str | None:
+    payment = message.successful_payment
+
+    if not payment:
+        return None
+
+    payment_id = payment.provider_payment_charge_id or payment.telegram_payment_charge_id
+
+    if payment_id:
+        return payment_id
+
+    if not message.chat or message.message_id is None:
+        return None
+
+    return (
+        f"telegram_fallback:"
+        f"{message.chat.id}:"
+        f"{message.message_id}:"
+        f"{payment.invoice_payload}:"
+        f"{payment.total_amount}:"
+        f"{payment.currency}"
+    )
+
+
 async def send_donate_info(message: Message) -> None:
     await message.answer(
-        DONATE_TEXT,
+        build_donate_text(),
         reply_markup=donate_keyboard(),
     )
 
@@ -134,5 +198,27 @@ async def successful_payment(message: Message) -> None:
         return
 
     save_message_user(message)
+
+    unlimited_until = None
+
+    if message.from_user:
+        payment_id = get_payment_id(message)
+
+        if payment_id:
+            DonationService.create_donation(
+                user_id=message.from_user.id,
+                amount_minor=payment.total_amount,
+                currency=payment.currency,
+                payment_id=payment_id,
+            )
+
+        unlimited_until = grant_unlimited_access(message.from_user.id, days=7)
+
+    if unlimited_until:
+        await message.answer(
+            f"{SUCCESSFUL_PAYMENT_TEXT}\n\n"
+            f"{UNLIMITED_ACCESS_TEXT.format(unlimited_until=format_unlimited_until(unlimited_until))}"
+        )
+        return
 
     await message.answer(SUCCESSFUL_PAYMENT_TEXT)

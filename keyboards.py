@@ -63,3 +63,16 @@ def donate_keyboard() -> InlineKeyboardMarkup:
             ],
         ]
     )
+
+
+def donation_upsell_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="☕ Поддержать проект",
+                    callback_data="donate",
+                ),
+            ],
+        ]
+    )

@@ -28,8 +28,68 @@ def init_db() -> None:
                 first_name TEXT,
                 created_at TEXT,
                 last_daily_card_date TEXT,
-                last_daily_action_date TEXT
+                last_daily_action_date TEXT,
+                unlimited_until TEXT
             )
+            """
+        )
+
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS donations (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                amount_minor INTEGER NOT NULL,
+                currency TEXT NOT NULL,
+                payment_id TEXT NOT NULL UNIQUE,
+                created_at TEXT NOT NULL
+            )
+            """
+        )
+
+        cursor.execute("PRAGMA table_info(donations)")
+        donation_columns = [column[1] for column in cursor.fetchall()]
+
+        if "amount" in donation_columns and "amount_minor" not in donation_columns:
+            cursor.execute("ALTER TABLE donations RENAME TO donations_old")
+            cursor.execute(
+                """
+                CREATE TABLE donations (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    amount_minor INTEGER NOT NULL,
+                    currency TEXT NOT NULL,
+                    payment_id TEXT NOT NULL UNIQUE,
+                    created_at TEXT NOT NULL
+                )
+                """
+            )
+            cursor.execute(
+                """
+                INSERT OR IGNORE INTO donations (
+                    id,
+                    user_id,
+                    amount_minor,
+                    currency,
+                    payment_id,
+                    created_at
+                )
+                SELECT
+                    id,
+                    user_id,
+                    CAST(ROUND(CAST(amount AS REAL) * 100) AS INTEGER),
+                    'RUB',
+                    payment_id,
+                    created_at
+                FROM donations_old
+                """
+            )
+            cursor.execute("DROP TABLE donations_old")
+
+        cursor.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_donations_user_id
+            ON donations(user_id)
             """
         )
 
@@ -49,6 +109,14 @@ def init_db() -> None:
                 """
                 ALTER TABLE users
                 ADD COLUMN last_daily_action_date TEXT
+                """
+            )
+
+        if "unlimited_until" not in columns:
+            cursor.execute(
+                """
+                ALTER TABLE users
+                ADD COLUMN unlimited_until TEXT
                 """
             )
 
