@@ -5,7 +5,7 @@ from database import (
     user_has_daily_action_today,
 )
 from keyboards import reply_menu_keyboard
-from services.timezone import get_today_warsaw
+from services.timezone import get_today_moscow
 from services.users import is_unlimited_user
 
 
@@ -18,7 +18,7 @@ async def check_daily_limit(message: Message, user: User | None = None) -> bool:
     if is_unlimited_user(user.id):
         return True
 
-    today = get_today_warsaw()
+    today = get_today_moscow()
 
     if user_has_daily_action_today(user.id, today):
         await message.answer(
@@ -43,5 +43,5 @@ def spend_daily_limit(user: User | None) -> None:
 
     update_last_daily_action_date(
         user_id=user.id,
-        date_value=get_today_warsaw(),
+        date_value=get_today_moscow(),
     )

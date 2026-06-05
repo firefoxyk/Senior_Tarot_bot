@@ -52,7 +52,7 @@ class DailyLimitsTest(unittest.IsolatedAsyncioTestCase):
         user = FakeUser(123)
         message = FakeMessage(user)
 
-        with patch("services.limits.get_today_warsaw", return_value="2026-06-05"):
+        with patch("services.limits.get_today_moscow", return_value="2026-06-05"):
             allowed = await check_daily_limit(message, user)
 
         self.assertTrue(allowed)
@@ -62,7 +62,7 @@ class DailyLimitsTest(unittest.IsolatedAsyncioTestCase):
     def test_spend_daily_limit_updates_last_daily_action_date(self) -> None:
         user = FakeUser(123)
 
-        with patch("services.limits.get_today_warsaw", return_value="2026-06-05"):
+        with patch("services.limits.get_today_moscow", return_value="2026-06-05"):
             spend_daily_limit(user)
 
         self.assertEqual(self.get_last_daily_action_date(), "2026-06-05")

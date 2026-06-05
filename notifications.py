@@ -4,16 +4,16 @@ from datetime import date
 from aiogram import Bot
 from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError
 
-from database import get_users_without_daily_card_today
+from database import get_users_without_daily_card_today, mark_user_blocked
 from keyboards import main_menu_keyboard
-from services.timezone import get_today_warsaw
+from services.timezone import get_today_moscow
 
 
 logger = logging.getLogger(__name__)
 
 
 async def send_daily_card_reminders(bot: Bot) -> None:
-    today = get_today_warsaw()
+    today = get_today_moscow()
     users = get_users_without_daily_card_today(today)
     
     logger.info(f"[Daily Card Reminder] Starting reminders for {len(users)} users (date: {today})")
@@ -37,6 +37,7 @@ async def send_daily_card_reminders(bot: Bot) -> None:
             
         except TelegramForbiddenError:
             blocked_count += 1
+            mark_user_blocked(user_id)
             logger.warning(f"[Daily Card Reminder] ⚠️ User {user_id} blocked bot or deleted account")
             
         except TelegramBadRequest as e:

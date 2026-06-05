@@ -17,7 +17,7 @@ from services.cards import (
 )
 from services.images import create_reversed_image
 from services.limits import check_daily_limit
-from services.timezone import get_today_warsaw
+from services.timezone import get_today_moscow
 from services.users import save_callback_user, save_message_user
 
 
@@ -105,7 +105,7 @@ async def send_single_card(message: Message, user: User | None = None) -> None:
     if user:
         update_daily_card_action_dates(
             user_id=user.id,
-            today=get_today_warsaw(),
+            today=get_today_moscow(),
         )
 
     if should_show_donation_upsell():

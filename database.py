@@ -29,7 +29,8 @@ def init_db() -> None:
                 created_at TEXT,
                 last_daily_card_date TEXT,
                 last_daily_action_date TEXT,
-                unlimited_until TEXT
+                unlimited_until TEXT,
+                blocked_at TEXT
             )
             """
         )
@@ -120,6 +121,14 @@ def init_db() -> None:
                 """
             )
 
+        if "blocked_at" not in columns:
+            cursor.execute(
+                """
+                ALTER TABLE users
+                ADD COLUMN blocked_at TEXT
+                """
+            )
+
         connection.commit()
 
 
@@ -149,6 +158,21 @@ def add_user(user_id: int, username: str | None, first_name: str | None) -> None
             ),
         )
 
+        cursor.execute(
+            """
+            UPDATE users
+            SET username = ?,
+                first_name = ?,
+                blocked_at = NULL
+            WHERE user_id = ?
+            """,
+            (
+                username,
+                first_name,
+                user_id,
+            ),
+        )
+
         connection.commit()
 
 
@@ -163,6 +187,7 @@ def get_all_users() -> list[int]:
             """
             SELECT user_id
             FROM users
+            WHERE blocked_at IS NULL
             """
         )
 
@@ -230,10 +255,11 @@ def get_users_without_daily_card_today(today: str) -> list[int]:
             """
             SELECT user_id
             FROM users
-            WHERE last_daily_card_date IS NULL
-               OR last_daily_card_date != ?
+            WHERE (last_daily_card_date IS NULL OR last_daily_card_date != ?)
+              AND (last_daily_action_date IS NULL OR last_daily_action_date != ?)
+              AND blocked_at IS NULL
             """,
-            (today,),
+            (today, today),
         )
 
         rows = cursor.fetchall()
@@ -255,6 +281,25 @@ def update_last_daily_action_date(user_id: int, date_value: str) -> None:
             WHERE user_id = ?
             """,
             (date_value, user_id),
+        )
+
+        connection.commit()
+
+
+def mark_user_blocked(user_id: int) -> None:
+    with get_connection() as connection:
+        cursor = connection.cursor()
+
+        cursor.execute(
+            """
+            UPDATE users
+            SET blocked_at = ?
+            WHERE user_id = ?
+            """,
+            (
+                datetime.utcnow().isoformat(),
+                user_id,
+            ),
         )
 
         connection.commit()

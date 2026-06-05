@@ -40,7 +40,7 @@ async def main() -> None:
     dp.include_router(router)
 
     scheduler = AsyncIOScheduler(
-        timezone="Europe/Warsaw"
+        timezone="Europe/Moscow"
     )
 
     scheduler.add_job(
