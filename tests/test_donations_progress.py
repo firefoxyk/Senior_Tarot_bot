@@ -60,6 +60,7 @@ class DonationsProgressTest(unittest.TestCase):
         progress = DonationService.get_monthly_server_progress("RUB")
 
         self.assertEqual(progress.collected_minor, 0)
+        self.assertEqual(progress.donations_count, 0)
         self.assertEqual(progress.goal_minor, 90000)
         self.assertEqual(progress.percent, 0)
         self.assertEqual(progress.progress_bar, "░░░░░░░░░░")
@@ -70,6 +71,7 @@ class DonationsProgressTest(unittest.TestCase):
         progress = DonationService.get_monthly_server_progress("RUB")
 
         self.assertEqual(progress.collected_minor, 19800)
+        self.assertEqual(progress.donations_count, 1)
         self.assertEqual(progress.percent, 22)
         self.assertEqual(progress.progress_bar, "██░░░░░░░░")
 
@@ -79,6 +81,7 @@ class DonationsProgressTest(unittest.TestCase):
         progress = DonationService.get_monthly_server_progress("RUB")
 
         self.assertEqual(progress.collected_minor, 120000)
+        self.assertEqual(progress.donations_count, 1)
         self.assertEqual(progress.percent, 100)
         self.assertEqual(progress.progress_bar, "██████████")
 
@@ -89,6 +92,7 @@ class DonationsProgressTest(unittest.TestCase):
         progress = DonationService.get_monthly_server_progress("RUB")
 
         self.assertEqual(progress.collected_minor, 19800)
+        self.assertEqual(progress.donations_count, 1)
         self.assertEqual(progress.percent, 22)
 
     def test_previous_month_is_not_counted(self) -> None:
@@ -102,6 +106,7 @@ class DonationsProgressTest(unittest.TestCase):
         progress = DonationService.get_monthly_server_progress("RUB")
 
         self.assertEqual(progress.collected_minor, 0)
+        self.assertEqual(progress.donations_count, 0)
 
 
 if __name__ == "__main__":

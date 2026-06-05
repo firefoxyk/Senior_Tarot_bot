@@ -4,6 +4,7 @@ from aiogram import F, Router
 from aiogram.filters import Command
 from aiogram.types import CallbackQuery, FSInputFile, Message, User
 
+from database import create_reading
 from services.cards import (
     BASE_DIR,
     SPREADS,
@@ -62,6 +63,13 @@ async def send_spread(
     finally:
         with suppress(FileNotFoundError):
             collage_path.unlink()
+
+    if user:
+        create_reading(
+            user_id=user.id,
+            reading_type=spread_key,
+            cards=cards,
+        )
 
     spend_daily_limit(user)
 

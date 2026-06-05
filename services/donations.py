@@ -44,6 +44,7 @@ class ServerProgress:
     currency: str
     percent: int
     progress_bar: str
+    donations_count: int
 
 
 def _row_to_donation(row: tuple[Any, ...]) -> Donation:
@@ -220,7 +221,7 @@ class DonationService:
             cursor = connection.cursor()
             cursor.execute(
                 """
-                SELECT COALESCE(SUM(amount_minor), 0)
+                SELECT COALESCE(SUM(amount_minor), 0), COUNT(*)
                 FROM donations
                 WHERE currency = ?
                   AND created_at >= ?
@@ -230,6 +231,7 @@ class DonationService:
             row = cursor.fetchone()
 
         collected_minor = int(row[0])
+        donations_count = int(row[1])
         percent = min(100, int(collected_minor * 100 / goal_minor)) if goal_minor > 0 else 0
         filled_count = min(10, percent // 10)
         progress_bar = "█" * filled_count + "░" * (10 - filled_count)
@@ -240,4 +242,5 @@ class DonationService:
             currency=currency,
             percent=percent,
             progress_bar=progress_bar,
+            donations_count=donations_count,
         )

@@ -4,7 +4,14 @@ from aiogram import Router
 from aiogram.filters import Command
 from aiogram.types import Message
 
+from database import (
+    get_active_users_count_for_date,
+    get_cards_readings_count,
+    get_spread_readings_count,
+    get_total_users_count,
+)
 from services.donations import DonationService
+from services.timezone import get_today_moscow
 
 
 router = Router()
@@ -78,3 +85,31 @@ async def cmd_donations_stats(message: Message) -> None:
         text_parts.append("<b>Донатеры:</b>\nПока нет донатов.")
 
     await message.answer("\n\n".join(text_parts))
+
+
+@router.message(Command("stats"))
+async def cmd_stats(message: Message) -> None:
+    if not is_admin(message):
+        await message.answer("Доступ запрещён.")
+        return
+
+    today = get_today_moscow()
+    currency = os.getenv("SERVER_MONTHLY_GOAL_CURRENCY", "RUB").strip() or "RUB"
+    donations_progress = DonationService.get_monthly_server_progress(currency)
+
+    text = "\n".join(
+        [
+            "📊 <b>Статистика</b>",
+            f"<b>Пользователей всего:</b> {get_total_users_count()}",
+            f"<b>Активных за сегодня:</b> {get_active_users_count_for_date(today)}",
+            f"<b>Выдано карт:</b> {get_cards_readings_count()}",
+            f"<b>Сделано раскладов:</b> {get_spread_readings_count()}",
+            (
+                f"<b>Донатов за месяц:</b> "
+                f"{format_amount_minor(donations_progress.collected_minor, donations_progress.currency)} "
+                f"({donations_progress.donations_count})"
+            ),
+        ]
+    )
+
+    await message.answer(text)

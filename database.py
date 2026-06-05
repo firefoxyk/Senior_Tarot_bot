@@ -1,5 +1,9 @@
+import json
 import sqlite3
 from datetime import datetime
+from typing import Any
+
+from services.timezone import MOSCOW_TZ
 
 
 DB_NAME = "senior_tarot.db"
@@ -45,6 +49,32 @@ def init_db() -> None:
                 payment_id TEXT NOT NULL UNIQUE,
                 created_at TEXT NOT NULL
             )
+            """
+        )
+
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS readings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                type TEXT NOT NULL CHECK(type IN ('card', 'spread', 'career', 'project')),
+                cards_json TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            )
+            """
+        )
+
+        cursor.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_readings_user_created_at
+            ON readings(user_id, created_at)
+            """
+        )
+
+        cursor.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_readings_type
+            ON readings(type)
             """
         )
 
@@ -303,6 +333,93 @@ def mark_user_blocked(user_id: int) -> None:
         )
 
         connection.commit()
+
+
+def create_reading(user_id: int, reading_type: str, cards: list[dict[str, Any]]) -> None:
+    created_at = datetime.now(MOSCOW_TZ).replace(tzinfo=None).isoformat()
+    cards_json = json.dumps(cards, ensure_ascii=False)
+
+    with get_connection() as connection:
+        cursor = connection.cursor()
+
+        cursor.execute(
+            """
+            INSERT INTO readings (
+                user_id,
+                type,
+                cards_json,
+                created_at
+            )
+            VALUES (?, ?, ?, ?)
+            """,
+            (
+                user_id,
+                reading_type,
+                cards_json,
+                created_at,
+            ),
+        )
+
+        connection.commit()
+
+
+def get_total_users_count() -> int:
+    with get_connection() as connection:
+        cursor = connection.cursor()
+        cursor.execute("SELECT COUNT(*) FROM users")
+        row = cursor.fetchone()
+
+    return int(row[0])
+
+
+def get_active_users_count_for_date(today: str) -> int:
+    with get_connection() as connection:
+        cursor = connection.cursor()
+        cursor.execute(
+            """
+            SELECT COUNT(DISTINCT user_id)
+            FROM readings
+            WHERE created_at >= ?
+              AND created_at < ?
+            """,
+            (
+                f"{today}T00:00:00",
+                f"{today}T23:59:59.999999",
+            ),
+        )
+        row = cursor.fetchone()
+
+    return int(row[0])
+
+
+def get_cards_readings_count() -> int:
+    with get_connection() as connection:
+        cursor = connection.cursor()
+        cursor.execute(
+            """
+            SELECT COUNT(*)
+            FROM readings
+            WHERE type = 'card'
+            """
+        )
+        row = cursor.fetchone()
+
+    return int(row[0])
+
+
+def get_spread_readings_count() -> int:
+    with get_connection() as connection:
+        cursor = connection.cursor()
+        cursor.execute(
+            """
+            SELECT COUNT(*)
+            FROM readings
+            WHERE type IN ('spread', 'career', 'project')
+            """
+        )
+        row = cursor.fetchone()
+
+    return int(row[0])
 
 
 def user_has_daily_action_today(user_id: int, today: str) -> bool:
