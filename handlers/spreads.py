@@ -1,3 +1,5 @@
+from contextlib import suppress
+
 from aiogram import F, Router
 from aiogram.filters import Command
 from aiogram.types import CallbackQuery, FSInputFile, Message, User
@@ -52,10 +54,14 @@ async def send_spread(
 
     caption = "\n\n".join(text_parts)
 
-    await message.answer_photo(
-        photo=FSInputFile(collage_path),
-        caption=caption,
-    )
+    try:
+        await message.answer_photo(
+            photo=FSInputFile(collage_path),
+            caption=caption,
+        )
+    finally:
+        with suppress(FileNotFoundError):
+            collage_path.unlink()
 
     spend_daily_limit(user)
 

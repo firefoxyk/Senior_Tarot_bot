@@ -1,4 +1,6 @@
 import random
+from contextlib import suppress
+from pathlib import Path
 
 from aiogram import F, Router
 from aiogram.filters import Command
@@ -43,6 +45,7 @@ async def send_card(
     is_reversed: bool = False,
 ) -> None:
     image_path = BASE_DIR / card["image"]
+    temp_image_path: Path | None = None
 
     card_name = get_card_display_name(card, is_reversed)
     prediction = get_daily_prediction(card, is_reversed)
@@ -61,15 +64,20 @@ async def send_card(
 
     if image_path.exists():
         if is_reversed:
-            reversed_image_path = create_reversed_image(image_path)
-            photo = FSInputFile(reversed_image_path)
+            temp_image_path = create_reversed_image(image_path)
+            photo = FSInputFile(temp_image_path)
         else:
             photo = FSInputFile(image_path)
 
-        await message.answer_photo(
-            photo=photo,
-            caption=caption,
-        )
+        try:
+            await message.answer_photo(
+                photo=photo,
+                caption=caption,
+            )
+        finally:
+            if temp_image_path:
+                with suppress(FileNotFoundError):
+                    temp_image_path.unlink()
     else:
         await message.answer(
             f"{caption}\n\n⚠️ Изображение не найдено: <code>{card['image']}</code>"
