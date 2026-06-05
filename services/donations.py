@@ -17,6 +17,12 @@ class Donation:
 
 
 @dataclass(frozen=True)
+class DonationCreationResult:
+    donation: Donation
+    created: bool
+
+
+@dataclass(frozen=True)
 class CurrencyDonationStats:
     currency: str
     total_amount_minor: int
@@ -58,7 +64,7 @@ class DonationService:
         amount_minor: int,
         currency: str,
         payment_id: str,
-    ) -> Donation:
+    ) -> DonationCreationResult:
         created_at = datetime.now(UTC).replace(tzinfo=None).isoformat()
 
         with get_connection() as connection:
@@ -66,20 +72,7 @@ class DonationService:
 
             cursor.execute(
                 """
-                SELECT id, user_id, amount_minor, currency, payment_id, created_at
-                FROM donations
-                WHERE payment_id = ?
-                """,
-                (payment_id,),
-            )
-            existing = cursor.fetchone()
-
-            if existing:
-                return _row_to_donation(existing)
-
-            cursor.execute(
-                """
-                INSERT INTO donations (
+                INSERT OR IGNORE INTO donations (
                     user_id,
                     amount_minor,
                     currency,
@@ -96,17 +89,22 @@ class DonationService:
                     created_at,
                 ),
             )
+            created = cursor.rowcount == 1
 
-            donation_id = cursor.lastrowid
+            cursor.execute(
+                """
+                SELECT id, user_id, amount_minor, currency, payment_id, created_at
+                FROM donations
+                WHERE payment_id = ?
+                """,
+                (payment_id,),
+            )
+            row = cursor.fetchone()
             connection.commit()
 
-        return Donation(
-            id=donation_id,
-            user_id=user_id,
-            amount_minor=amount_minor,
-            currency=currency,
-            payment_id=payment_id,
-            created_at=created_at,
+        return DonationCreationResult(
+            donation=_row_to_donation(row),
+            created=created,
         )
 
     @staticmethod

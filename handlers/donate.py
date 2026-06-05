@@ -205,12 +205,15 @@ async def successful_payment(message: Message) -> None:
         payment_id = get_payment_id(message)
 
         if payment_id:
-            DonationService.create_donation(
+            donation_result = DonationService.create_donation(
                 user_id=message.from_user.id,
                 amount_minor=payment.total_amount,
                 currency=payment.currency,
                 payment_id=payment_id,
             )
+
+            if not donation_result.created:
+                return
 
         unlimited_until = grant_unlimited_access(message.from_user.id, days=7)
 
