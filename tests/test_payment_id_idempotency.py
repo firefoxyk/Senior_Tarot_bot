@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, patch
 import database
 from database import init_db
 from handlers.donate import SUPPORT_PAYLOAD, successful_payment
+from services.donations import DonationService
 
 
 class FakeUser:
@@ -60,6 +61,25 @@ class PaymentIdIdempotencyTest(unittest.IsolatedAsyncioTestCase):
             row = connection.execute("SELECT COUNT(*) FROM donations").fetchone()
 
         return int(row[0])
+
+    def test_create_donation_returns_existing_record_for_duplicate_payment_id(self) -> None:
+        first_result = DonationService.create_donation(
+            user_id=123,
+            amount_minor=9900,
+            currency="RUB",
+            payment_id="payment-1",
+        )
+        second_result = DonationService.create_donation(
+            user_id=123,
+            amount_minor=9900,
+            currency="RUB",
+            payment_id="payment-1",
+        )
+
+        self.assertTrue(first_result.created)
+        self.assertFalse(second_result.created)
+        self.assertEqual(first_result.donation.id, second_result.donation.id)
+        self.assertEqual(self.get_donations_count(), 1)
 
     async def test_successful_payment_is_processed_once_per_payment_id(self) -> None:
         now = datetime(2026, 6, 5, 12, 0, 0)

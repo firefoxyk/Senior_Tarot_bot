@@ -48,6 +48,18 @@ class DailyLimitsTest(unittest.IsolatedAsyncioTestCase):
 
         return row[0]
 
+    def set_unlimited_until(self, value: str | None) -> None:
+        with sqlite3.connect(database.DB_NAME) as connection:
+            connection.execute(
+                """
+                UPDATE users
+                SET unlimited_until = ?
+                WHERE user_id = ?
+                """,
+                (value, 123),
+            )
+            connection.commit()
+
     async def test_check_daily_limit_does_not_spend_limit(self) -> None:
         user = FakeUser(123)
         message = FakeMessage(user)
@@ -66,6 +78,33 @@ class DailyLimitsTest(unittest.IsolatedAsyncioTestCase):
             spend_daily_limit(user)
 
         self.assertEqual(self.get_last_daily_action_date(), "2026-06-05")
+
+    async def test_check_daily_limit_blocks_after_limit_is_spent(self) -> None:
+        user = FakeUser(123)
+        message = FakeMessage(user)
+
+        with patch("services.limits.get_today_moscow", return_value="2026-06-05"):
+            spend_daily_limit(user)
+            allowed = await check_daily_limit(message, user)
+
+        self.assertFalse(allowed)
+        self.assertEqual(len(message.answers), 1)
+
+    async def test_unlimited_user_bypasses_daily_limit_without_spending_it(self) -> None:
+        user = FakeUser(123)
+        message = FakeMessage(user)
+        self.set_unlimited_until("2026-06-12T12:00:00")
+
+        with (
+            patch("services.limits.get_today_moscow", return_value="2026-06-05"),
+            patch("services.users._get_now_utc", return_value=database.datetime(2026, 6, 5, 12, 0, 0)),
+        ):
+            allowed = await check_daily_limit(message, user)
+            spend_daily_limit(user)
+
+        self.assertTrue(allowed)
+        self.assertEqual(message.answers, [])
+        self.assertIsNone(self.get_last_daily_action_date())
 
 
 if __name__ == "__main__":
