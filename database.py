@@ -13,7 +13,9 @@ def get_connection() -> sqlite3.Connection:
     """
     Создаёт подключение к SQLite.
     """
-    return sqlite3.connect(DB_NAME)
+    connection = sqlite3.connect(DB_NAME)
+    connection.execute("PRAGMA foreign_keys = ON")
+    return connection
 
 
 def init_db() -> None:
@@ -47,7 +49,8 @@ def init_db() -> None:
                 amount_minor INTEGER NOT NULL,
                 currency TEXT NOT NULL,
                 payment_id TEXT NOT NULL UNIQUE,
-                created_at TEXT NOT NULL
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (user_id) REFERENCES users(user_id)
             )
             """
         )
@@ -82,6 +85,19 @@ def init_db() -> None:
         donation_columns = [column[1] for column in cursor.fetchall()]
 
         if "amount" in donation_columns and "amount_minor" not in donation_columns:
+            cursor.execute(
+                """
+                INSERT OR IGNORE INTO users (
+                    user_id,
+                    created_at
+                )
+                SELECT DISTINCT
+                    user_id,
+                    ?
+                FROM donations
+                """,
+                (datetime.utcnow().isoformat(),),
+            )
             cursor.execute("ALTER TABLE donations RENAME TO donations_old")
             cursor.execute(
                 """
@@ -91,7 +107,8 @@ def init_db() -> None:
                     amount_minor INTEGER NOT NULL,
                     currency TEXT NOT NULL,
                     payment_id TEXT NOT NULL UNIQUE,
-                    created_at TEXT NOT NULL
+                    created_at TEXT NOT NULL,
+                    FOREIGN KEY (user_id) REFERENCES users(user_id)
                 )
                 """
             )
@@ -116,6 +133,59 @@ def init_db() -> None:
                 """
             )
             cursor.execute("DROP TABLE donations_old")
+
+        cursor.execute("PRAGMA foreign_key_list(donations)")
+        donation_foreign_keys = cursor.fetchall()
+
+        if not any(foreign_key[2] == "users" for foreign_key in donation_foreign_keys):
+            cursor.execute(
+                """
+                INSERT OR IGNORE INTO users (
+                    user_id,
+                    created_at
+                )
+                SELECT DISTINCT
+                    user_id,
+                    ?
+                FROM donations
+                """,
+                (datetime.utcnow().isoformat(),),
+            )
+            cursor.execute("ALTER TABLE donations RENAME TO donations_without_fk")
+            cursor.execute(
+                """
+                CREATE TABLE donations (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    amount_minor INTEGER NOT NULL,
+                    currency TEXT NOT NULL,
+                    payment_id TEXT NOT NULL UNIQUE,
+                    created_at TEXT NOT NULL,
+                    FOREIGN KEY (user_id) REFERENCES users(user_id)
+                )
+                """
+            )
+            cursor.execute(
+                """
+                INSERT OR IGNORE INTO donations (
+                    id,
+                    user_id,
+                    amount_minor,
+                    currency,
+                    payment_id,
+                    created_at
+                )
+                SELECT
+                    id,
+                    user_id,
+                    amount_minor,
+                    currency,
+                    payment_id,
+                    created_at
+                FROM donations_without_fk
+                """
+            )
+            cursor.execute("DROP TABLE donations_without_fk")
 
         cursor.execute(
             """
@@ -373,6 +443,13 @@ def get_total_users_count() -> int:
 
 
 def get_active_users_count_for_date(today: str) -> int:
+    return get_active_users_count_between(
+        start=f"{today}T00:00:00",
+        end=f"{today}T23:59:59.999999",
+    )
+
+
+def get_active_users_count_between(start: str, end: str) -> int:
     with get_connection() as connection:
         cursor = connection.cursor()
         cursor.execute(
@@ -383,8 +460,8 @@ def get_active_users_count_for_date(today: str) -> int:
               AND created_at < ?
             """,
             (
-                f"{today}T00:00:00",
-                f"{today}T23:59:59.999999",
+                start,
+                end,
             ),
         )
         row = cursor.fetchone()
@@ -392,15 +469,36 @@ def get_active_users_count_for_date(today: str) -> int:
     return int(row[0])
 
 
+def get_active_users_count_since(start: str) -> int:
+    with get_connection() as connection:
+        cursor = connection.cursor()
+        cursor.execute(
+            """
+            SELECT COUNT(DISTINCT user_id)
+            FROM readings
+            WHERE created_at >= ?
+            """,
+            (start,),
+        )
+        row = cursor.fetchone()
+
+    return int(row[0])
+
+
 def get_cards_readings_count() -> int:
+    return get_readings_count_by_type("card")
+
+
+def get_readings_count_by_type(reading_type: str) -> int:
     with get_connection() as connection:
         cursor = connection.cursor()
         cursor.execute(
             """
             SELECT COUNT(*)
             FROM readings
-            WHERE type = 'card'
-            """
+            WHERE type = ?
+            """,
+            (reading_type,),
         )
         row = cursor.fetchone()
 

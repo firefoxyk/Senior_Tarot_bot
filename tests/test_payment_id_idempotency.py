@@ -6,7 +6,7 @@ from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 import database
-from database import init_db
+from database import add_user, init_db
 from handlers.donate import SUPPORT_PAYLOAD, successful_payment
 from services.donations import DonationService
 
@@ -38,6 +38,7 @@ class PaymentIdIdempotencyTest(unittest.IsolatedAsyncioTestCase):
         self.original_db_name = database.DB_NAME
         database.DB_NAME = str(Path(self.temp_dir.name) / "test.db")
         init_db()
+        add_user(123, "tester", "Tester")
 
     def tearDown(self) -> None:
         database.DB_NAME = self.original_db_name

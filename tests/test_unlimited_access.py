@@ -45,6 +45,27 @@ class UnlimitedAccessTest(unittest.TestCase):
 
         self.assertEqual(datetime.fromisoformat(unlimited_until), now + timedelta(days=7))
 
+    def test_grant_unlimited_access_creates_missing_user_record(self) -> None:
+        now = datetime(2026, 6, 4, 12, 0, 0)
+
+        with patch("services.users._get_now_utc", return_value=now):
+            unlimited_until = grant_unlimited_access(456, days=7)
+            self.assertTrue(is_unlimited_user(456))
+
+        with sqlite3.connect(database.DB_NAME) as connection:
+            row = connection.execute(
+                """
+                SELECT unlimited_until
+                FROM users
+                WHERE user_id = ?
+                """,
+                (456,),
+            ).fetchone()
+
+        self.assertIsNotNone(row)
+        self.assertEqual(row[0], unlimited_until)
+        self.assertEqual(datetime.fromisoformat(unlimited_until), now + timedelta(days=7))
+
     def test_repeated_donation_extends_from_active_unlimited_until(self) -> None:
         now = datetime(2026, 6, 4, 12, 0, 0)
         active_until = now + timedelta(days=3)

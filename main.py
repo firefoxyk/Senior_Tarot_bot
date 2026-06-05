@@ -5,12 +5,25 @@ import os
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
+from aiogram.types import BotCommand
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from dotenv import load_dotenv
 
 from database import init_db
 from handlers import router
 from notifications import send_daily_card_reminders
+
+
+def build_bot_commands() -> list[BotCommand]:
+    return [
+        BotCommand(command="start", description="Старт"),
+        BotCommand(command="menu", description="Меню"),
+        BotCommand(command="help", description="Помощь"),
+        BotCommand(command="card", description="Карта дня"),
+        BotCommand(command="spread", description="Общий расклад"),
+        BotCommand(command="career", description="Карьерный расклад"),
+        BotCommand(command="project", description="Проектный расклад"),
+    ]
 
 
 async def main() -> None:
@@ -38,6 +51,7 @@ async def main() -> None:
 
     dp = Dispatcher()
     dp.include_router(router)
+    await bot.set_my_commands(build_bot_commands())
 
     scheduler = AsyncIOScheduler(
         timezone="Europe/Moscow"

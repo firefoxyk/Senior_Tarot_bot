@@ -108,6 +108,21 @@ class DonationsProgressTest(unittest.TestCase):
         self.assertEqual(progress.collected_minor, 0)
         self.assertEqual(progress.donations_count, 0)
 
+    def test_latest_public_donations_do_not_include_personal_fields(self) -> None:
+        for index in range(6):
+            self.insert_donation(
+                amount_minor=9900 + index,
+                created_at=f"2026-06-0{index + 1}T12:00:00",
+                payment_id=f"payment-{index}",
+            )
+
+        donations = DonationService.get_latest_public_donations(limit=5)
+
+        self.assertEqual(len(donations), 5)
+        self.assertEqual(donations[0].amount_minor, 9905)
+        self.assertFalse(hasattr(donations[0], "user_id"))
+        self.assertFalse(hasattr(donations[0], "payment_id"))
+
 
 if __name__ == "__main__":
     unittest.main()

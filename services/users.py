@@ -72,6 +72,24 @@ def is_unlimited_user(user_id: int) -> bool:
 
 def grant_unlimited_access(user_id: int, days: int = 7) -> str:
     now = _get_now_utc()
+
+    with get_connection() as connection:
+        cursor = connection.cursor()
+        cursor.execute(
+            """
+            INSERT OR IGNORE INTO users (
+                user_id,
+                created_at
+            )
+            VALUES (?, ?)
+            """,
+            (
+                user_id,
+                now.isoformat(),
+            ),
+        )
+        connection.commit()
+
     current_until = _parse_utc_datetime(get_unlimited_until(user_id))
     base_datetime = current_until if current_until and current_until > now else now
     new_unlimited_until = (base_datetime + timedelta(days=days)).isoformat()

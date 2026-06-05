@@ -23,6 +23,13 @@ class DonationCreationResult:
 
 
 @dataclass(frozen=True)
+class PublicDonation:
+    amount_minor: int
+    currency: str
+    created_at: str
+
+
+@dataclass(frozen=True)
 class CurrencyDonationStats:
     currency: str
     total_amount_minor: int
@@ -244,3 +251,27 @@ class DonationService:
             progress_bar=progress_bar,
             donations_count=donations_count,
         )
+
+    @staticmethod
+    def get_latest_public_donations(limit: int = 5) -> list[PublicDonation]:
+        with get_connection() as connection:
+            cursor = connection.cursor()
+            cursor.execute(
+                """
+                SELECT amount_minor, currency, created_at
+                FROM donations
+                ORDER BY created_at DESC, id DESC
+                LIMIT ?
+                """,
+                (limit,),
+            )
+            rows = cursor.fetchall()
+
+        return [
+            PublicDonation(
+                amount_minor=int(row[0]),
+                currency=row[1],
+                created_at=row[2],
+            )
+            for row in rows
+        ]

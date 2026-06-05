@@ -42,6 +42,7 @@ PAYMENT_PROVIDER_TOKEN=telegram_payment_provider_token
 ADMIN_IDS=123456789
 SERVER_MONTHLY_GOAL_MINOR=90000
 SERVER_MONTHLY_GOAL_CURRENCY=RUB
+BOT_USERNAME=YOUR_BOT_USERNAME
 ```
 
 Переменные:
@@ -51,6 +52,7 @@ SERVER_MONTHLY_GOAL_CURRENCY=RUB
 - `ADMIN_IDS` - Telegram user id админов через пробел, запятую или `;`.
 - `SERVER_MONTHLY_GOAL_MINOR` - месячная цель в minor units, например `90000` для 900.00 RUB.
 - `SERVER_MONTHLY_GOAL_CURRENCY` - валюта цели, по умолчанию `RUB`.
+- `BOT_USERNAME` - username бота без `@`, используется для кнопки “Поделиться ботом”.
 
 Не коммитить `.env`, токены, дампы БД и платежные секреты.
 

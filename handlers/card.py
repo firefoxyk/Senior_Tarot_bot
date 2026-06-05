@@ -7,7 +7,7 @@ from aiogram.filters import Command
 from aiogram.types import CallbackQuery, FSInputFile, Message, User
 
 from database import create_reading, update_daily_card_action_dates
-from keyboards import donation_upsell_keyboard
+from keyboards import donation_upsell_keyboard, share_bot_keyboard
 from services.cards import (
     BASE_DIR,
     Card,
@@ -24,6 +24,7 @@ from services.users import save_callback_user, save_message_user
 router = Router()
 
 DONATION_UPSELL_PROBABILITY = 0.2
+CARD_SHARE_UPSELL_PROBABILITY = 0.2
 DONATION_UPSELL_TEXT = """
 ━━━━━━━━━━━━━━
 
@@ -36,6 +37,10 @@ DONATION_UPSELL_TEXT = """
 
 def should_show_donation_upsell() -> bool:
     return random.random() < DONATION_UPSELL_PROBABILITY
+
+
+def should_show_card_share_upsell() -> bool:
+    return random.random() < CARD_SHARE_UPSELL_PROBABILITY
 
 
 async def send_card(
@@ -119,6 +124,12 @@ async def send_single_card(message: Message, user: User | None = None) -> None:
         await message.answer(
             DONATION_UPSELL_TEXT,
             reply_markup=donation_upsell_keyboard(),
+        )
+
+    elif should_show_card_share_upsell():
+        await message.answer(
+        "Поделись ботом с другом:",
+            reply_markup=share_bot_keyboard(),
         )
 
 

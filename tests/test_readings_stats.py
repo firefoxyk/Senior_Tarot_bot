@@ -11,7 +11,9 @@ from database import (
     add_user,
     create_reading,
     get_active_users_count_for_date,
+    get_active_users_count_since,
     get_cards_readings_count,
+    get_readings_count_by_type,
     get_spread_readings_count,
     get_total_users_count,
     init_db,
@@ -71,7 +73,12 @@ class ReadingsStatsTest(unittest.TestCase):
 
         self.assertEqual(get_total_users_count(), 2)
         self.assertEqual(get_active_users_count_for_date("2026-06-05"), 2)
+        self.assertEqual(get_active_users_count_since("2026-05-30T00:00:00"), 2)
         self.assertEqual(get_cards_readings_count(), 1)
+        self.assertEqual(get_readings_count_by_type("card"), 1)
+        self.assertEqual(get_readings_count_by_type("spread"), 1)
+        self.assertEqual(get_readings_count_by_type("career"), 1)
+        self.assertEqual(get_readings_count_by_type("project"), 0)
         self.assertEqual(get_spread_readings_count(), 2)
 
 

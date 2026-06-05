@@ -2,7 +2,6 @@ import os
 import sqlite3
 import tempfile
 import unittest
-from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
@@ -52,7 +51,12 @@ class AdminStatsTest(unittest.IsolatedAsyncioTestCase):
 
         self.temp_dir.cleanup()
 
-    def insert_donation(self) -> None:
+    def insert_donation(
+        self,
+        amount_minor: int,
+        payment_id: str,
+        created_at: str,
+    ) -> None:
         with sqlite3.connect(database.DB_NAME) as connection:
             connection.execute(
                 """
@@ -67,31 +71,42 @@ class AdminStatsTest(unittest.IsolatedAsyncioTestCase):
                 """,
                 (
                     123,
-                    9900,
+                    amount_minor,
                     "RUB",
-                    "payment-1",
-                    datetime.now(UTC).replace(tzinfo=None).isoformat(),
+                    payment_id,
+                    created_at,
                 ),
             )
             connection.commit()
 
-    async def test_stats_command_shows_core_metrics(self) -> None:
+    async def test_stats_command_shows_real_metrics_without_personal_donation_data(self) -> None:
         add_user(123, "admin", "Admin")
         add_user(456, "user", "User")
         create_reading(123, "card", [{"name": "Card"}])
         create_reading(456, "spread", [{"name": "Spread"}])
-        self.insert_donation()
+        create_reading(456, "career", [{"name": "Career"}])
+        create_reading(456, "project", [{"name": "Project"}])
+        self.insert_donation(9900, "payment-private-1", "2026-06-05T12:00:00")
+        self.insert_donation(19900, "payment-private-2", "2026-06-04T12:00:00")
 
-        with patch("handlers.admin.get_today_moscow", return_value=datetime.now().date().isoformat()):
+        with patch("handlers.admin.get_today_moscow", return_value="2026-06-05"):
             message = FakeMessage()
             await cmd_stats(message)
 
         text = message.answer.await_args.args[0]
         self.assertIn("Пользователей всего:</b> 2", text)
         self.assertIn("Активных за сегодня:</b> 2", text)
-        self.assertIn("Выдано карт:</b> 1", text)
-        self.assertIn("Сделано раскладов:</b> 1", text)
-        self.assertIn("Донатов за месяц:</b> 99.00 RUB (1)", text)
+        self.assertIn("Активных за неделю:</b> 2", text)
+        self.assertIn("Карт дня выдано:</b> 1", text)
+        self.assertIn("Общих раскладов:</b> 1", text)
+        self.assertIn("Карьерных раскладов:</b> 1", text)
+        self.assertIn("Проектных раскладов:</b> 1", text)
+        self.assertIn("Донатов за месяц:</b> 2", text)
+        self.assertIn("Сумма донатов:</b> 298.00 RUB", text)
+        self.assertIn("ТОП-5 последних донатеров:", text)
+        self.assertIn("199.00 RUB (2026-06-04)", text)
+        self.assertIn("99.00 RUB (2026-06-05)", text)
+        self.assertNotIn("payment-private", text)
 
     async def test_stats_command_denies_regular_user(self) -> None:
         message = FakeMessage(FakeRegularUser())

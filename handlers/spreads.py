@@ -1,3 +1,4 @@
+import random
 from contextlib import suppress
 
 from aiogram import F, Router
@@ -5,6 +6,7 @@ from aiogram.filters import Command
 from aiogram.types import CallbackQuery, FSInputFile, Message, User
 
 from database import create_reading
+from keyboards import donation_upsell_keyboard, share_bot_keyboard
 from services.cards import (
     BASE_DIR,
     SPREADS,
@@ -17,6 +19,25 @@ from services.users import save_callback_user, save_message_user
 
 
 router = Router()
+
+SPREAD_DONATION_UPSELL_PROBABILITY = 0.2
+SPREAD_SHARE_UPSELL_PROBABILITY = 0.2
+SPREAD_DONATION_UPSELL_TEXT = """
+☕ Если расклад оказался полезным,
+можно поддержать сервер Senior Tarot.
+""".strip()
+SPREAD_SHARE_UPSELL_TEXT = """
+Понравился расклад?
+Поделись ботом с другом.
+""".strip()
+
+
+def should_show_spread_donation_upsell() -> bool:
+    return random.random() < SPREAD_DONATION_UPSELL_PROBABILITY
+
+
+def should_show_spread_share_upsell() -> bool:
+    return random.random() < SPREAD_SHARE_UPSELL_PROBABILITY
 
 
 async def send_spread(
@@ -72,6 +93,17 @@ async def send_spread(
         )
 
     spend_daily_limit(user)
+
+    if should_show_spread_donation_upsell():
+        await message.answer(
+            SPREAD_DONATION_UPSELL_TEXT,
+            reply_markup=donation_upsell_keyboard(),
+        )
+    elif should_show_spread_share_upsell():
+        await message.answer(
+            SPREAD_SHARE_UPSELL_TEXT,
+            reply_markup=share_bot_keyboard(),
+        )
 
 
 @router.message(Command("spread"))

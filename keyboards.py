@@ -1,9 +1,17 @@
+import os
+
 from aiogram.types import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
     KeyboardButton,
     ReplyKeyboardMarkup,
 )
+
+
+def get_bot_share_url() -> str:
+    bot_username = os.getenv("BOT_USERNAME", "ВАШ_БОТ").strip() or "ВАШ_БОТ"
+    bot_username = bot_username.removeprefix("@")
+    return f"https://t.me/{bot_username}"
 
 
 def reply_menu_keyboard() -> ReplyKeyboardMarkup:
@@ -72,6 +80,19 @@ def donation_upsell_keyboard() -> InlineKeyboardMarkup:
                 InlineKeyboardButton(
                     text="☕ Поддержать проект",
                     callback_data="donate",
+                ),
+            ],
+        ]
+    )
+
+
+def share_bot_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="📤 Поделиться ботом",
+                    url=get_bot_share_url(),
                 ),
             ],
         ]
