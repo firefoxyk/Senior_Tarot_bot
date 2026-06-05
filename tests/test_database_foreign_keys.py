@@ -81,6 +81,65 @@ class DatabaseForeignKeysTest(unittest.TestCase):
 
         self.assertEqual(int(row[0]), 1)
 
+    def test_readings_user_id_references_users_user_id(self) -> None:
+        with get_connection() as connection:
+            foreign_keys = connection.execute("PRAGMA foreign_key_list(readings)").fetchall()
+
+        self.assertTrue(
+            any(
+                foreign_key[2] == "users"
+                and foreign_key[3] == "user_id"
+                and foreign_key[4] == "user_id"
+                for foreign_key in foreign_keys
+            )
+        )
+
+    def test_reading_cannot_reference_missing_user(self) -> None:
+        with self.assertRaises(sqlite3.IntegrityError):
+            with get_connection() as connection:
+                connection.execute(
+                    """
+                    INSERT INTO readings (
+                        user_id,
+                        type,
+                        cards_json,
+                        created_at
+                    )
+                    VALUES (?, ?, ?, ?)
+                    """,
+                    (
+                        999,
+                        "card",
+                        "[]",
+                        "2026-06-05T12:00:00",
+                    ),
+                )
+
+    def test_reading_can_reference_existing_user(self) -> None:
+        add_user(123, "tester", "Tester")
+
+        with get_connection() as connection:
+            connection.execute(
+                """
+                INSERT INTO readings (
+                    user_id,
+                    type,
+                    cards_json,
+                    created_at
+                )
+                VALUES (?, ?, ?, ?)
+                """,
+                (
+                    123,
+                    "card",
+                    "[]",
+                    "2026-06-05T12:00:00",
+                ),
+            )
+            row = connection.execute("SELECT COUNT(*) FROM readings").fetchone()
+
+        self.assertEqual(int(row[0]), 1)
+
 
 if __name__ == "__main__":
     unittest.main()

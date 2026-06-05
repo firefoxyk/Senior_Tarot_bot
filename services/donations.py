@@ -5,6 +5,8 @@ from typing import Any
 
 from database import get_connection
 
+DEFAULT_SERVER_MONTHLY_GOAL_MINOR = 90000
+
 
 @dataclass(frozen=True)
 class Donation:
@@ -63,6 +65,15 @@ def _row_to_donation(row: tuple[Any, ...]) -> Donation:
         payment_id=row[4],
         created_at=row[5],
     )
+
+
+def _get_server_monthly_goal_minor() -> int:
+    goal_minor = os.getenv("SERVER_MONTHLY_GOAL_MINOR", str(DEFAULT_SERVER_MONTHLY_GOAL_MINOR))
+
+    try:
+        return int(goal_minor)
+    except ValueError:
+        return DEFAULT_SERVER_MONTHLY_GOAL_MINOR
 
 
 class DonationService:
@@ -214,7 +225,7 @@ class DonationService:
 
     @staticmethod
     def get_monthly_server_progress(currency: str) -> ServerProgress:
-        goal_minor = int(os.getenv("SERVER_MONTHLY_GOAL_MINOR", "90000"))
+        goal_minor = _get_server_monthly_goal_minor()
         month_start = datetime.now(UTC).replace(
             day=1,
             hour=0,

@@ -1,6 +1,6 @@
 import json
 import sqlite3
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from services.timezone import MOSCOW_TZ
@@ -62,7 +62,8 @@ def init_db() -> None:
                 user_id INTEGER NOT NULL,
                 type TEXT NOT NULL CHECK(type IN ('card', 'spread', 'career', 'project')),
                 cards_json TEXT NOT NULL,
-                created_at TEXT NOT NULL
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (user_id) REFERENCES users(user_id)
             )
             """
         )
@@ -81,6 +82,56 @@ def init_db() -> None:
             """
         )
 
+        cursor.execute("PRAGMA foreign_key_list(readings)")
+        reading_foreign_keys = cursor.fetchall()
+
+        if not any(foreign_key[2] == "users" for foreign_key in reading_foreign_keys):
+            cursor.execute(
+                """
+                INSERT OR IGNORE INTO users (
+                    user_id,
+                    created_at
+                )
+                SELECT DISTINCT
+                    user_id,
+                    ?
+                FROM readings
+                """,
+                (datetime.now(UTC).replace(tzinfo=None).isoformat(),),
+            )
+            cursor.execute("ALTER TABLE readings RENAME TO readings_without_fk")
+            cursor.execute(
+                """
+                CREATE TABLE readings (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    type TEXT NOT NULL CHECK(type IN ('card', 'spread', 'career', 'project')),
+                    cards_json TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    FOREIGN KEY (user_id) REFERENCES users(user_id)
+                )
+                """
+            )
+            cursor.execute(
+                """
+                INSERT OR IGNORE INTO readings (
+                    id,
+                    user_id,
+                    type,
+                    cards_json,
+                    created_at
+                )
+                SELECT
+                    id,
+                    user_id,
+                    type,
+                    cards_json,
+                    created_at
+                FROM readings_without_fk
+                """
+            )
+            cursor.execute("DROP TABLE readings_without_fk")
+
         cursor.execute("PRAGMA table_info(donations)")
         donation_columns = [column[1] for column in cursor.fetchall()]
 
@@ -96,7 +147,7 @@ def init_db() -> None:
                     ?
                 FROM donations
                 """,
-                (datetime.utcnow().isoformat(),),
+                (datetime.now(UTC).replace(tzinfo=None).isoformat(),),
             )
             cursor.execute("ALTER TABLE donations RENAME TO donations_old")
             cursor.execute(
@@ -149,7 +200,7 @@ def init_db() -> None:
                     ?
                 FROM donations
                 """,
-                (datetime.utcnow().isoformat(),),
+                (datetime.now(UTC).replace(tzinfo=None).isoformat(),),
             )
             cursor.execute("ALTER TABLE donations RENAME TO donations_without_fk")
             cursor.execute(
@@ -254,7 +305,7 @@ def add_user(user_id: int, username: str | None, first_name: str | None) -> None
                 user_id,
                 username,
                 first_name,
-                datetime.utcnow().isoformat(),
+                datetime.now(UTC).replace(tzinfo=None).isoformat(),
             ),
         )
 
@@ -397,7 +448,7 @@ def mark_user_blocked(user_id: int) -> None:
             WHERE user_id = ?
             """,
             (
-                datetime.utcnow().isoformat(),
+                datetime.now(UTC).replace(tzinfo=None).isoformat(),
                 user_id,
             ),
         )

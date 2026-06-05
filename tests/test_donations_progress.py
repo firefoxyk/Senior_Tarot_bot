@@ -65,6 +65,14 @@ class DonationsProgressTest(unittest.TestCase):
         self.assertEqual(progress.percent, 0)
         self.assertEqual(progress.progress_bar, "░░░░░░░░░░")
 
+    def test_invalid_goal_minor_uses_default(self) -> None:
+        os.environ["SERVER_MONTHLY_GOAL_MINOR"] = "not-a-number"
+
+        progress = DonationService.get_monthly_server_progress("RUB")
+
+        self.assertEqual(progress.goal_minor, 90000)
+        self.assertEqual(progress.percent, 0)
+
     def test_19800_of_90000_is_22_percent(self) -> None:
         self.insert_donation(19800)
 

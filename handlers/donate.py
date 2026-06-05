@@ -233,6 +233,7 @@ async def successful_payment(message: Message) -> None:
                 payment.total_amount,
                 payment.currency,
             )
+            return
 
         if payment_id:
             try:

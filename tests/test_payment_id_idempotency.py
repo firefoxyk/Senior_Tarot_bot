@@ -25,11 +25,21 @@ class FakePayment:
     telegram_payment_charge_id = "telegram-payment-1"
 
 
+class FakePaymentWithoutId:
+    invoice_payload = SUPPORT_PAYLOAD
+    total_amount = 9900
+    currency = "RUB"
+    provider_payment_charge_id = None
+    telegram_payment_charge_id = None
+
+
 class FakeMessage:
     def __init__(self) -> None:
         self.from_user = FakeUser()
         self.successful_payment = FakePayment()
         self.answer = AsyncMock()
+        self.chat = None
+        self.message_id = None
 
 
 class PaymentIdIdempotencyTest(unittest.IsolatedAsyncioTestCase):
@@ -106,6 +116,20 @@ class PaymentIdIdempotencyTest(unittest.IsolatedAsyncioTestCase):
             any("Payment processed successfully" in message for message in logs.output)
         )
         self.assertTrue(any("Duplicate payment ignored" in message for message in logs.output))
+
+    async def test_successful_payment_without_payment_id_does_not_grant_unlimited(self) -> None:
+        message = FakeMessage()
+        message.successful_payment = FakePaymentWithoutId()
+
+        with self.assertLogs("handlers.donate", level="ERROR") as logs:
+            await successful_payment(message)
+
+        self.assertEqual(self.get_donations_count(), 0)
+        self.assertIsNone(self.get_user_unlimited_until())
+        message.answer.assert_not_awaited()
+        self.assertTrue(
+            any("Successful payment has no payment_id" in message for message in logs.output)
+        )
 
 
 if __name__ == "__main__":
