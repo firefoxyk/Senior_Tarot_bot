@@ -64,7 +64,10 @@ class PaymentIdIdempotencyTest(unittest.IsolatedAsyncioTestCase):
     async def test_successful_payment_is_processed_once_per_payment_id(self) -> None:
         now = datetime(2026, 6, 5, 12, 0, 0)
 
-        with patch("services.users._get_now_utc", return_value=now):
+        with (
+            patch("services.users._get_now_utc", return_value=now),
+            self.assertLogs("handlers.donate", level="INFO") as logs,
+        ):
             first_message = FakeMessage()
             await successful_payment(first_message)
 
@@ -78,6 +81,10 @@ class PaymentIdIdempotencyTest(unittest.IsolatedAsyncioTestCase):
         )
         first_message.answer.assert_awaited_once()
         second_message.answer.assert_not_awaited()
+        self.assertTrue(
+            any("Payment processed successfully" in message for message in logs.output)
+        )
+        self.assertTrue(any("Duplicate payment ignored" in message for message in logs.output))
 
 
 if __name__ == "__main__":

@@ -1,3 +1,4 @@
+import logging
 import os
 from datetime import datetime
 
@@ -10,6 +11,7 @@ from services.users import grant_unlimited_access, save_callback_user, save_mess
 
 
 router = Router()
+logger = logging.getLogger(__name__)
 
 SUPPORT_PAYLOAD = "support_99"
 SUPPORT_PRICE = 9900
@@ -114,7 +116,6 @@ def get_payment_id(message: Message) -> str | None:
         f"telegram_fallback:"
         f"{message.chat.id}:"
         f"{message.message_id}:"
-        f"{payment.invoice_payload}:"
         f"{payment.total_amount}:"
         f"{payment.currency}"
     )
@@ -174,6 +175,10 @@ async def pre_checkout_query(pre_checkout: PreCheckoutQuery) -> None:
     provider_token = get_payment_provider_token()
 
     if pre_checkout.invoice_payload != SUPPORT_PAYLOAD:
+        logger.warning(
+            "Payment pre-checkout rejected: invalid payload user_id=%s",
+            pre_checkout.from_user.id if pre_checkout.from_user else None,
+        )
         await pre_checkout.answer(
             ok=False,
             error_message="Некорректный платёж.",
@@ -181,6 +186,10 @@ async def pre_checkout_query(pre_checkout: PreCheckoutQuery) -> None:
         return
 
     if not provider_token:
+        logger.error(
+            "Payment pre-checkout rejected: provider token is missing user_id=%s",
+            pre_checkout.from_user.id if pre_checkout.from_user else None,
+        )
         await pre_checkout.answer(
             ok=False,
             error_message="Платежи временно недоступны.",
@@ -194,7 +203,20 @@ async def pre_checkout_query(pre_checkout: PreCheckoutQuery) -> None:
 async def successful_payment(message: Message) -> None:
     payment = message.successful_payment
 
-    if not payment or payment.invoice_payload != SUPPORT_PAYLOAD:
+    if not payment:
+        logger.error(
+            "Successful payment handler called without successful_payment user_id=%s",
+            message.from_user.id if message.from_user else None,
+        )
+        return
+
+    if payment.invoice_payload != SUPPORT_PAYLOAD:
+        logger.warning(
+            "Successful payment ignored: invalid payload user_id=%s amount_minor=%s currency=%s",
+            message.from_user.id if message.from_user else None,
+            payment.total_amount,
+            payment.currency,
+        )
         return
 
     save_message_user(message)
@@ -204,18 +226,67 @@ async def successful_payment(message: Message) -> None:
     if message.from_user:
         payment_id = get_payment_id(message)
 
-        if payment_id:
-            donation_result = DonationService.create_donation(
-                user_id=message.from_user.id,
-                amount_minor=payment.total_amount,
-                currency=payment.currency,
-                payment_id=payment_id,
+        if not payment_id:
+            logger.error(
+                "Successful payment has no payment_id user_id=%s amount_minor=%s currency=%s",
+                message.from_user.id,
+                payment.total_amount,
+                payment.currency,
             )
 
+        if payment_id:
+            try:
+                donation_result = DonationService.create_donation(
+                    user_id=message.from_user.id,
+                    amount_minor=payment.total_amount,
+                    currency=payment.currency,
+                    payment_id=payment_id,
+                )
+            except Exception:
+                logger.exception(
+                    "Payment processing failed while saving donation user_id=%s payment_id=%s amount_minor=%s currency=%s",
+                    message.from_user.id,
+                    payment_id,
+                    payment.total_amount,
+                    payment.currency,
+                )
+                raise
+
             if not donation_result.created:
+                logger.warning(
+                    "Duplicate payment ignored user_id=%s payment_id=%s donation_id=%s amount_minor=%s currency=%s",
+                    message.from_user.id,
+                    payment_id,
+                    donation_result.donation.id,
+                    payment.total_amount,
+                    payment.currency,
+                )
                 return
 
-        unlimited_until = grant_unlimited_access(message.from_user.id, days=7)
+        try:
+            unlimited_until = grant_unlimited_access(message.from_user.id, days=7)
+        except Exception:
+            logger.exception(
+                "Payment processing failed while granting unlimited access user_id=%s payment_id=%s",
+                message.from_user.id,
+                payment_id,
+            )
+            raise
+
+        logger.info(
+            "Payment processed successfully user_id=%s payment_id=%s amount_minor=%s currency=%s unlimited_until=%s",
+            message.from_user.id,
+            payment_id,
+            payment.total_amount,
+            payment.currency,
+            unlimited_until,
+        )
+    else:
+        logger.error(
+            "Successful payment has no from_user amount_minor=%s currency=%s",
+            payment.total_amount,
+            payment.currency,
+        )
 
     if unlimited_until:
         await message.answer(

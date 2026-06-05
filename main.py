@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import os
 
 from aiogram import Bot, Dispatcher
@@ -14,6 +15,10 @@ from notifications import send_daily_card_reminders
 
 async def main() -> None:
     load_dotenv()
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    )
 
     bot_token = os.getenv("BOT_TOKEN")
 
