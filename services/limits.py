@@ -1,5 +1,3 @@
-from datetime import date
-
 from aiogram.types import Message, User
 
 from database import (
@@ -33,9 +31,17 @@ async def check_daily_limit(message: Message, user: User | None = None) -> bool:
         )
         return False
 
+    return True
+
+
+def spend_daily_limit(user: User | None) -> None:
+    if not user:
+        return
+
+    if is_unlimited_user(user.id):
+        return
+
     update_last_daily_action_date(
         user_id=user.id,
-        date_value=today,
+        date_value=get_today_warsaw(),
     )
-
-    return True

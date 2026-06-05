@@ -9,7 +9,7 @@ from services.cards import (
     get_card_text,
 )
 from services.images import create_spread_collage
-from services.limits import check_daily_limit
+from services.limits import check_daily_limit, spend_daily_limit
 from services.users import save_callback_user, save_message_user
 
 
@@ -22,6 +22,7 @@ async def send_spread(
     user: User | None = None,
 ) -> None:
     save_message_user(message)
+    user = user or message.from_user
 
     if not await check_daily_limit(message, user):
         return
@@ -55,6 +56,8 @@ async def send_spread(
         photo=FSInputFile(collage_path),
         caption=caption,
     )
+
+    spend_daily_limit(user)
 
 
 @router.message(Command("spread"))

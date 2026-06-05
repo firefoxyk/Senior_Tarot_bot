@@ -1,12 +1,10 @@
 import random
 
-from datetime import date
-
 from aiogram import F, Router
 from aiogram.filters import Command
 from aiogram.types import CallbackQuery, FSInputFile, Message, User
 
-from database import update_last_daily_card_date, update_daily_card_action_dates
+from database import update_daily_card_action_dates
 from keyboards import donation_upsell_keyboard
 from services.cards import (
     BASE_DIR,
@@ -86,13 +84,6 @@ async def send_single_card(message: Message, user: User | None = None) -> None:
     if not await check_daily_limit(message, user):
         return
 
-    if user:
-        today = get_today_warsaw()
-        update_daily_card_action_dates(
-            user_id=user.id,
-            today=today,
-        )
-
     card = draw_cards(1)[0]
     is_reversed = random.choice([True, False])
 
@@ -102,6 +93,12 @@ async def send_single_card(message: Message, user: User | None = None) -> None:
         title="Карта дня",
         is_reversed=is_reversed,
     )
+
+    if user:
+        update_daily_card_action_dates(
+            user_id=user.id,
+            today=get_today_warsaw(),
+        )
 
     if should_show_donation_upsell():
         await message.answer(
