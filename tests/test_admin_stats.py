@@ -2,12 +2,14 @@ import os
 import sqlite3
 import tempfile
 import unittest
+from datetime import datetime
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 import database
-from database import add_user, create_reading, init_db
+from database import add_user, create_reading, init_db, set_morning_reminders_subscription
 from handlers.admin import cmd_stats
+from services.timezone import MOSCOW_TZ
 
 
 class FakeUser:
@@ -82,10 +84,20 @@ class AdminStatsTest(unittest.IsolatedAsyncioTestCase):
     async def test_stats_command_shows_real_metrics_without_personal_donation_data(self) -> None:
         add_user(123, "admin", "Admin")
         add_user(456, "user", "User")
-        create_reading(123, "card", [{"name": "Card"}])
-        create_reading(456, "spread", [{"name": "Spread"}])
-        create_reading(456, "career", [{"name": "Career"}])
-        create_reading(456, "project", [{"name": "Project"}])
+        set_morning_reminders_subscription(456, False)
+        with patch("database.datetime") as datetime_mock:
+            datetime_mock.now.return_value = datetime(
+                2026,
+                6,
+                5,
+                12,
+                0,
+                tzinfo=MOSCOW_TZ,
+            )
+            create_reading(123, "card", [{"name": "Card"}])
+            create_reading(456, "spread", [{"name": "Spread"}])
+            create_reading(456, "career", [{"name": "Career"}])
+            create_reading(456, "project", [{"name": "Project"}])
         self.insert_donation(9900, "payment-private-1", "2026-06-05T12:00:00")
         self.insert_donation(19900, "payment-private-2", "2026-06-04T12:00:00")
 
@@ -97,6 +109,8 @@ class AdminStatsTest(unittest.IsolatedAsyncioTestCase):
         self.assertIn("Пользователей всего:</b> 2", text)
         self.assertIn("Активных за сегодня:</b> 2", text)
         self.assertIn("Активных за неделю:</b> 2", text)
+        self.assertIn("Подписаны на утренние напоминания:</b> 1", text)
+        self.assertIn("Отписаны от утренних напоминаний:</b> 1", text)
         self.assertIn("Карт дня выдано:</b> 1", text)
         self.assertIn("Общих раскладов:</b> 1", text)
         self.assertIn("Карьерных раскладов:</b> 1", text)

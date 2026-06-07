@@ -50,6 +50,8 @@ BOT_USERNAME=YOUR_BOT_USERNAME
 - `BOT_TOKEN` - токен Telegram-бота.
 - `PAYMENT_PROVIDER_TOKEN` - токен платёжного провайдера для Telegram Payments.
 - `ADMIN_IDS` - Telegram user id админов через пробел, запятую или `;`.
+  Обязателен для `/stats`, `/donations_stats` и кнопки “Сообщить о проблеме”.
+  Если на сервере не указан актуальный Telegram ID админа, обращения пользователей не смогут быть доставлены.
 - `SERVER_MONTHLY_GOAL_MINOR` - месячная цель в minor units, например `90000` для 900.00 RUB.
 - `SERVER_MONTHLY_GOAL_CURRENCY` - валюта цели, по умолчанию `RUB`.
 - `BOT_USERNAME` - username бота без `@`, используется для кнопки “Поделиться ботом”.

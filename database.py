@@ -36,7 +36,8 @@ def init_db() -> None:
                 last_daily_card_date TEXT,
                 last_daily_action_date TEXT,
                 unlimited_until TEXT,
-                blocked_at TEXT
+                blocked_at TEXT,
+                morning_reminders_subscribed INTEGER NOT NULL DEFAULT 1
             )
             """
         )
@@ -280,6 +281,22 @@ def init_db() -> None:
                 """
             )
 
+        if "morning_reminders_subscribed" not in columns:
+            cursor.execute(
+                """
+                ALTER TABLE users
+                ADD COLUMN morning_reminders_subscribed INTEGER NOT NULL DEFAULT 1
+                """
+            )
+
+        cursor.execute(
+            """
+            UPDATE users
+            SET morning_reminders_subscribed = 1
+            WHERE morning_reminders_subscribed IS NULL
+            """
+        )
+
         connection.commit()
 
 
@@ -409,6 +426,7 @@ def get_users_without_daily_card_today(today: str) -> list[int]:
             WHERE (last_daily_card_date IS NULL OR last_daily_card_date != ?)
               AND (last_daily_action_date IS NULL OR last_daily_action_date != ?)
               AND blocked_at IS NULL
+              AND morning_reminders_subscribed = 1
             """,
             (today, today),
         )
@@ -416,6 +434,46 @@ def get_users_without_daily_card_today(today: str) -> list[int]:
         rows = cursor.fetchall()
 
     return [row[0] for row in rows]
+
+
+def set_morning_reminders_subscription(user_id: int, is_subscribed: bool) -> None:
+    with get_connection() as connection:
+        cursor = connection.cursor()
+
+        cursor.execute(
+            """
+            UPDATE users
+            SET morning_reminders_subscribed = ?
+            WHERE user_id = ?
+            """,
+            (
+                1 if is_subscribed else 0,
+                user_id,
+            ),
+        )
+
+        connection.commit()
+
+
+def is_morning_reminders_subscribed(user_id: int) -> bool:
+    with get_connection() as connection:
+        cursor = connection.cursor()
+
+        cursor.execute(
+            """
+            SELECT morning_reminders_subscribed
+            FROM users
+            WHERE user_id = ?
+            """,
+            (user_id,),
+        )
+
+        row = cursor.fetchone()
+
+    if not row:
+        return True
+
+    return bool(row[0])
 
 
 def update_last_daily_action_date(user_id: int, date_value: str) -> None:
@@ -488,6 +546,38 @@ def get_total_users_count() -> int:
     with get_connection() as connection:
         cursor = connection.cursor()
         cursor.execute("SELECT COUNT(*) FROM users")
+        row = cursor.fetchone()
+
+    return int(row[0])
+
+
+def get_morning_reminders_subscribed_count() -> int:
+    with get_connection() as connection:
+        cursor = connection.cursor()
+        cursor.execute(
+            """
+            SELECT COUNT(*)
+            FROM users
+            WHERE morning_reminders_subscribed = 1
+              AND blocked_at IS NULL
+            """
+        )
+        row = cursor.fetchone()
+
+    return int(row[0])
+
+
+def get_morning_reminders_unsubscribed_count() -> int:
+    with get_connection() as connection:
+        cursor = connection.cursor()
+        cursor.execute(
+            """
+            SELECT COUNT(*)
+            FROM users
+            WHERE morning_reminders_subscribed = 0
+              AND blocked_at IS NULL
+            """
+        )
         row = cursor.fetchone()
 
     return int(row[0])

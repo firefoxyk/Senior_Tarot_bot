@@ -1,6 +1,7 @@
 import sqlite3
 import tempfile
 import unittest
+import os
 from pathlib import Path
 from unittest.mock import patch
 
@@ -27,12 +28,18 @@ class DailyLimitsTest(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:
         self.temp_dir = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
         self.original_db_name = database.DB_NAME
+        self.original_admin_ids = os.environ.get("ADMIN_IDS")
         database.DB_NAME = str(Path(self.temp_dir.name) / "test.db")
+        os.environ.pop("ADMIN_IDS", None)
         init_db()
         add_user(123, "tester", "Tester")
 
     def tearDown(self) -> None:
         database.DB_NAME = self.original_db_name
+        if self.original_admin_ids is None:
+            os.environ.pop("ADMIN_IDS", None)
+        else:
+            os.environ["ADMIN_IDS"] = self.original_admin_ids
         self.temp_dir.cleanup()
 
     def get_last_daily_action_date(self) -> str | None:
@@ -101,6 +108,19 @@ class DailyLimitsTest(unittest.IsolatedAsyncioTestCase):
         ):
             allowed = await check_daily_limit(message, user)
             spend_daily_limit(user)
+
+        self.assertTrue(allowed)
+        self.assertEqual(message.answers, [])
+        self.assertIsNone(self.get_last_daily_action_date())
+
+    async def test_admin_user_bypasses_daily_limit_after_limit_is_spent(self) -> None:
+        os.environ["ADMIN_IDS"] = "123"
+        user = FakeUser(123)
+        message = FakeMessage(user)
+
+        with patch("services.limits.get_today_moscow", return_value="2026-06-05"):
+            spend_daily_limit(user)
+            allowed = await check_daily_limit(message, user)
 
         self.assertTrue(allowed)
         self.assertEqual(message.answers, [])

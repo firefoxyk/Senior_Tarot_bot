@@ -8,30 +8,17 @@ from aiogram.types import Message
 from database import (
     get_active_users_count_for_date,
     get_active_users_count_since,
+    get_morning_reminders_subscribed_count,
+    get_morning_reminders_unsubscribed_count,
     get_readings_count_by_type,
     get_total_users_count,
 )
+from services.admins import get_admin_ids
 from services.donations import DonationService
 from services.timezone import get_today_moscow
 
 
 router = Router()
-
-
-def get_admin_ids() -> set[int]:
-    raw_admin_ids = os.getenv("ADMIN_IDS", "")
-    separators = str.maketrans({",": " ", ";": " ", "\n": " "})
-    normalized_admin_ids = raw_admin_ids.translate(separators)
-
-    admin_ids: set[int] = set()
-
-    for value in normalized_admin_ids.split():
-        try:
-            admin_ids.add(int(value))
-        except ValueError:
-            continue
-
-    return admin_ids
 
 
 def is_admin(message: Message) -> bool:
@@ -125,6 +112,8 @@ async def cmd_stats(message: Message) -> None:
             f"👥 <b>Пользователей всего:</b> {get_total_users_count()}",
             f"📈 <b>Активных за сегодня:</b> {get_active_users_count_for_date(today)}",
             f"📈 <b>Активных за неделю:</b> {get_active_users_count_since(f'{week_start}T00:00:00')}",
+            f"🔔 <b>Подписаны на утренние напоминания:</b> {get_morning_reminders_subscribed_count()}",
+            f"🔕 <b>Отписаны от утренних напоминаний:</b> {get_morning_reminders_unsubscribed_count()}",
             "",
             f"🔮 <b>Карт дня выдано:</b> {get_readings_count_by_type('card')}",
             f"🃏 <b>Общих раскладов:</b> {get_readings_count_by_type('spread')}",

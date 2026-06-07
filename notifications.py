@@ -30,7 +30,7 @@ async def send_daily_card_reminders(bot: Bot) -> None:
                     "🔮 Пора вытянуть карту дня!\n\n"
                     "Узнай, что сегодня приготовил тебе Senior Tarot."
                 ),
-                reply_markup=main_menu_keyboard(),
+                reply_markup=main_menu_keyboard(notifications_subscribed=True),
             )
             success_count += 1
             logger.info(f"[Daily Card Reminder] ✅ Sent reminder to user {user_id}")

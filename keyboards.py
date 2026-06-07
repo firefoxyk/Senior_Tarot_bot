@@ -14,7 +14,13 @@ def get_bot_share_url() -> str:
     return f"https://t.me/{bot_username}"
 
 
-def reply_menu_keyboard() -> ReplyKeyboardMarkup:
+def reply_menu_keyboard(notifications_subscribed: bool = True) -> ReplyKeyboardMarkup:
+    notification_button_text = (
+        "Отписаться от уведомлений"
+        if notifications_subscribed
+        else "Подписаться на уведомления"
+    )
+
     return ReplyKeyboardMarkup(
         keyboard=[
             [
@@ -29,6 +35,12 @@ def reply_menu_keyboard() -> ReplyKeyboardMarkup:
                 KeyboardButton(text="ℹ️ Помощь"),
             ],
             [
+                KeyboardButton(text="Сообщить о проблеме"),
+            ],
+            [
+                KeyboardButton(text=notification_button_text),
+            ],
+            [
                 KeyboardButton(text="☕ Поддержать проект"),
             ],
         ],
@@ -37,7 +49,20 @@ def reply_menu_keyboard() -> ReplyKeyboardMarkup:
     )
 
 
-def main_menu_keyboard() -> InlineKeyboardMarkup:
+def main_menu_keyboard(notifications_subscribed: bool = True) -> InlineKeyboardMarkup:
+    notification_button = InlineKeyboardButton(
+        text=(
+            "Отписаться от уведомлений"
+            if notifications_subscribed
+            else "Подписаться на уведомления"
+        ),
+        callback_data=(
+            "unsubscribe_notifications"
+            if notifications_subscribed
+            else "subscribe_notifications"
+        ),
+    )
+
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
@@ -54,9 +79,27 @@ def main_menu_keyboard() -> InlineKeyboardMarkup:
                 InlineKeyboardButton(text="ℹ️ Помощь", callback_data="help"),
             ],
             [
+                InlineKeyboardButton(text="Сообщить о проблеме", callback_data="report_problem"),
+            ],
+            [
+                notification_button,
+            ],
+            [
                 InlineKeyboardButton(text="☕ Поддержать проект", callback_data="donate"),
             ],
         ]
+    )
+
+
+def cancel_keyboard() -> ReplyKeyboardMarkup:
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [
+                KeyboardButton(text="Отмена"),
+            ],
+        ],
+        resize_keyboard=True,
+        input_field_placeholder="Опишите проблему или отмените ввод..."
     )
 
 
