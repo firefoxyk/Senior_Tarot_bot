@@ -6,7 +6,13 @@ from handlers.spreads import (
     should_show_spread_donation_upsell,
     should_show_spread_share_upsell,
 )
-from keyboards import donation_upsell_keyboard, main_menu_keyboard, reply_menu_keyboard, share_bot_keyboard
+from keyboards import (
+    donation_upsell_keyboard,
+    get_bot_share_url,
+    main_menu_keyboard,
+    reply_menu_keyboard,
+    share_bot_keyboard,
+)
 
 
 class DonationUpsellTest(unittest.TestCase):
@@ -46,22 +52,46 @@ class DonationUpsellTest(unittest.TestCase):
         self.assertEqual(button.text, "Подписаться на уведомления")
         self.assertEqual(button.callback_data, "subscribe_notifications")
 
-    def test_main_menu_has_report_problem_button(self) -> None:
+    def test_main_menu_places_donate_above_help_report_and_notifications_below(self) -> None:
         keyboard = main_menu_keyboard()
-        button = keyboard.inline_keyboard[4][0]
 
-        self.assertEqual(button.text, "Сообщить о проблеме")
-        self.assertEqual(button.callback_data, "report_problem")
+        self.assertEqual(
+            [
+                (button.text, button.callback_data)
+                for button in keyboard.inline_keyboard[3]
+            ],
+            [("☕ Поддержать проект", "donate")],
+        )
+        self.assertEqual(
+            [
+                (button.text, button.callback_data)
+                for button in keyboard.inline_keyboard[4]
+            ],
+            [("ℹ️ Помощь", "help"), ("Сообщить о проблеме", "report_problem")],
+        )
+        self.assertEqual(
+            [
+                (button.text, button.callback_data)
+                for button in keyboard.inline_keyboard[5]
+            ],
+            [("Отписаться от уведомлений", "unsubscribe_notifications")],
+        )
 
-    def test_reply_menu_has_report_problem_button(self) -> None:
-        keyboard = reply_menu_keyboard()
-        button_texts = [
-            button.text
-            for row in keyboard.keyboard
-            for button in row
-        ]
+    def test_reply_menu_places_donate_above_help_report_and_notifications_below(self) -> None:
+        keyboard = reply_menu_keyboard(notifications_subscribed=True)
 
-        self.assertIn("Сообщить о проблеме", button_texts)
+        self.assertEqual(
+            [button.text for button in keyboard.keyboard[2]],
+            ["☕ Поддержать проект"],
+        )
+        self.assertEqual(
+            [button.text for button in keyboard.keyboard[3]],
+            ["ℹ️ Помощь", "Сообщить о проблеме"],
+        )
+        self.assertEqual(
+            [button.text for button in keyboard.keyboard[4]],
+            ["Отписаться от уведомлений"],
+        )
 
     def test_reply_menu_shows_subscribe_button_for_unsubscribed_user(self) -> None:
         keyboard = reply_menu_keyboard(notifications_subscribed=False)
@@ -74,13 +104,17 @@ class DonationUpsellTest(unittest.TestCase):
         self.assertIn("Подписаться на уведомления", button_texts)
 
     def test_share_bot_keyboard_uses_configured_bot_username(self) -> None:
-        with patch.dict("os.environ", {"BOT_USERNAME": "@senior_tarot_bot"}):
+        with patch.dict("os.environ", {"BOT_USERNAME": "@BugOracleBot"}):
             keyboard = share_bot_keyboard()
 
         button = keyboard.inline_keyboard[0][0]
 
         self.assertEqual(button.text, "📤 Поделиться ботом")
-        self.assertEqual(button.url, "https://t.me/senior_tarot_bot")
+        self.assertEqual(button.url, "https://t.me/BugOracleBot")
+
+    def test_share_bot_url_defaults_to_bug_oracle_bot(self) -> None:
+        with patch.dict("os.environ", {}, clear=True):
+            self.assertEqual(get_bot_share_url(), "https://t.me/BugOracleBot")
 
     def test_should_show_spread_donation_upsell_true_below_probability(self) -> None:
         with patch("handlers.spreads.random.random", return_value=0.19):

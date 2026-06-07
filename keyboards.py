@@ -9,7 +9,7 @@ from aiogram.types import (
 
 
 def get_bot_share_url() -> str:
-    bot_username = os.getenv("BOT_USERNAME", "ВАШ_БОТ").strip() or "ВАШ_БОТ"
+    bot_username = os.getenv("BOT_USERNAME", "BugOracleBot").strip() or "BugOracleBot"
     bot_username = bot_username.removeprefix("@")
     return f"https://t.me/{bot_username}"
 
@@ -32,16 +32,14 @@ def reply_menu_keyboard(notifications_subscribed: bool = True) -> ReplyKeyboardM
                 KeyboardButton(text="🚀 Проект"),
             ],
             [
-                KeyboardButton(text="ℹ️ Помощь"),
+                KeyboardButton(text="☕ Поддержать проект"),
             ],
             [
+                KeyboardButton(text="ℹ️ Помощь"),
                 KeyboardButton(text="Сообщить о проблеме"),
             ],
             [
                 KeyboardButton(text=notification_button_text),
-            ],
-            [
-                KeyboardButton(text="☕ Поддержать проект"),
             ],
         ],
         resize_keyboard=True,
@@ -76,16 +74,14 @@ def main_menu_keyboard(notifications_subscribed: bool = True) -> InlineKeyboardM
                 InlineKeyboardButton(text="🚀 Проект", callback_data="project"),
             ],
             [
-                InlineKeyboardButton(text="ℹ️ Помощь", callback_data="help"),
+                InlineKeyboardButton(text="☕ Поддержать проект", callback_data="donate"),
             ],
             [
+                InlineKeyboardButton(text="ℹ️ Помощь", callback_data="help"),
                 InlineKeyboardButton(text="Сообщить о проблеме", callback_data="report_problem"),
             ],
             [
                 notification_button,
-            ],
-            [
-                InlineKeyboardButton(text="☕ Поддержать проект", callback_data="donate"),
             ],
         ]
     )
