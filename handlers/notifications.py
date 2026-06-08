@@ -2,7 +2,7 @@ from aiogram import F, Router
 from aiogram.types import CallbackQuery, Message
 
 from database import set_morning_reminders_subscription
-from keyboards import main_menu_keyboard, reply_menu_keyboard
+from services.menu import send_inline_menu, send_reply_menu_or_plain_text
 from services.users import save_callback_user, save_message_user
 
 
@@ -18,14 +18,15 @@ async def send_notifications_subscription_menu(
     else:
         text = "Готово, утренние напоминания отключены."
 
-    await message.answer(
-        text,
-        reply_markup=reply_menu_keyboard(notifications_subscribed),
+    await send_reply_menu_or_plain_text(
+        message=message,
+        text=text,
+        notifications_subscribed=notifications_subscribed,
     )
 
-    await message.answer(
-        "Выбери действие:",
-        reply_markup=main_menu_keyboard(notifications_subscribed),
+    await send_inline_menu(
+        message=message,
+        notifications_subscribed=notifications_subscribed,
     )
 
 

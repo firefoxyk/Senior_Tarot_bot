@@ -81,6 +81,39 @@ class ReadingsStatsTest(unittest.TestCase):
         self.assertEqual(get_readings_count_by_type("project"), 0)
         self.assertEqual(get_spread_readings_count(), 2)
 
+    def test_stats_can_exclude_admin_readings(self) -> None:
+        add_user(123, "admin", "Admin")
+        add_user(456, "user", "User")
+
+        with patch("database.datetime") as datetime_mock:
+            datetime_mock.now.return_value = datetime(
+                2026,
+                6,
+                5,
+                12,
+                0,
+                tzinfo=MOSCOW_TZ,
+            )
+            create_reading(123, "card", [{"name": "Admin Card"}])
+            create_reading(123, "spread", [{"name": "Admin Spread"}])
+            create_reading(456, "card", [{"name": "User Card"}])
+            create_reading(456, "career", [{"name": "User Career"}])
+
+        excluded_user_ids = {123}
+
+        self.assertEqual(
+            get_active_users_count_for_date("2026-06-05", excluded_user_ids),
+            1,
+        )
+        self.assertEqual(
+            get_active_users_count_since("2026-05-30T00:00:00", excluded_user_ids),
+            1,
+        )
+        self.assertEqual(get_readings_count_by_type("card", excluded_user_ids), 1)
+        self.assertEqual(get_readings_count_by_type("spread", excluded_user_ids), 0)
+        self.assertEqual(get_readings_count_by_type("career", excluded_user_ids), 1)
+        self.assertEqual(get_spread_readings_count(excluded_user_ids), 1)
+
 
 if __name__ == "__main__":
     unittest.main()

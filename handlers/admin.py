@@ -90,6 +90,7 @@ async def cmd_stats(message: Message) -> None:
 
     today = get_today_moscow()
     week_start = (datetime.fromisoformat(today) - timedelta(days=6)).date().isoformat()
+    excluded_user_ids = get_admin_ids()
     currency = os.getenv("SERVER_MONTHLY_GOAL_CURRENCY", "RUB").strip() or "RUB"
     donations_progress = DonationService.get_monthly_server_progress(currency)
     latest_donations = DonationService.get_latest_public_donations(limit=5)
@@ -110,15 +111,15 @@ async def cmd_stats(message: Message) -> None:
             "📊 <b>Статистика</b>",
             "",
             f"👥 <b>Пользователей всего:</b> {get_total_users_count()}",
-            f"📈 <b>Активных за сегодня:</b> {get_active_users_count_for_date(today)}",
-            f"📈 <b>Активных за неделю:</b> {get_active_users_count_since(f'{week_start}T00:00:00')}",
+            f"📈 <b>Активных за сегодня:</b> {get_active_users_count_for_date(today, excluded_user_ids)}",
+            f"📈 <b>Активных за неделю:</b> {get_active_users_count_since(f'{week_start}T00:00:00', excluded_user_ids)}",
             f"🔔 <b>Подписаны на утренние напоминания:</b> {get_morning_reminders_subscribed_count()}",
             f"🔕 <b>Отписаны от утренних напоминаний:</b> {get_morning_reminders_unsubscribed_count()}",
             "",
-            f"🔮 <b>Карт дня выдано:</b> {get_readings_count_by_type('card')}",
-            f"🃏 <b>Общих раскладов:</b> {get_readings_count_by_type('spread')}",
-            f"💼 <b>Карьерных раскладов:</b> {get_readings_count_by_type('career')}",
-            f"🚀 <b>Проектных раскладов:</b> {get_readings_count_by_type('project')}",
+            f"🔮 <b>Карт дня выдано:</b> {get_readings_count_by_type('card', excluded_user_ids)}",
+            f"🃏 <b>Общих раскладов:</b> {get_readings_count_by_type('spread', excluded_user_ids)}",
+            f"💼 <b>Карьерных раскладов:</b> {get_readings_count_by_type('career', excluded_user_ids)}",
+            f"🚀 <b>Проектных раскладов:</b> {get_readings_count_by_type('project', excluded_user_ids)}",
             "",
             f"☕ <b>Донатов за месяц:</b> {donations_progress.donations_count}",
             (

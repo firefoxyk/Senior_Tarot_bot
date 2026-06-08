@@ -99,6 +99,16 @@ def cancel_keyboard() -> ReplyKeyboardMarkup:
     )
 
 
+def cancel_inline_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="Отмена", callback_data="cancel_report"),
+            ],
+        ]
+    )
+
+
 def donate_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[

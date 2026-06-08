@@ -583,78 +583,124 @@ def get_morning_reminders_unsubscribed_count() -> int:
     return int(row[0])
 
 
-def get_active_users_count_for_date(today: str) -> int:
+def build_excluded_users_clause(
+    excluded_user_ids: set[int] | None,
+    column_name: str = "user_id",
+) -> tuple[str, list[int]]:
+    if not excluded_user_ids:
+        return "", []
+
+    excluded_user_ids_list = sorted(excluded_user_ids)
+    placeholders = ", ".join("?" for _ in excluded_user_ids_list)
+    return f" AND {column_name} NOT IN ({placeholders})", excluded_user_ids_list
+
+
+def get_active_users_count_for_date(
+    today: str,
+    excluded_user_ids: set[int] | None = None,
+) -> int:
     return get_active_users_count_between(
         start=f"{today}T00:00:00",
         end=f"{today}T23:59:59.999999",
+        excluded_user_ids=excluded_user_ids,
     )
 
 
-def get_active_users_count_between(start: str, end: str) -> int:
+def get_active_users_count_between(
+    start: str,
+    end: str,
+    excluded_user_ids: set[int] | None = None,
+) -> int:
+    excluded_clause, excluded_params = build_excluded_users_clause(excluded_user_ids)
+
     with get_connection() as connection:
         cursor = connection.cursor()
         cursor.execute(
-            """
+            f"""
             SELECT COUNT(DISTINCT user_id)
             FROM readings
             WHERE created_at >= ?
               AND created_at < ?
+              {excluded_clause}
             """,
-            (
+            [
                 start,
                 end,
-            ),
+                *excluded_params,
+            ],
         )
         row = cursor.fetchone()
 
     return int(row[0])
 
 
-def get_active_users_count_since(start: str) -> int:
+def get_active_users_count_since(
+    start: str,
+    excluded_user_ids: set[int] | None = None,
+) -> int:
+    excluded_clause, excluded_params = build_excluded_users_clause(excluded_user_ids)
+
     with get_connection() as connection:
         cursor = connection.cursor()
         cursor.execute(
-            """
+            f"""
             SELECT COUNT(DISTINCT user_id)
             FROM readings
             WHERE created_at >= ?
+              {excluded_clause}
             """,
-            (start,),
+            [
+                start,
+                *excluded_params,
+            ],
         )
         row = cursor.fetchone()
 
     return int(row[0])
 
 
-def get_cards_readings_count() -> int:
-    return get_readings_count_by_type("card")
+def get_cards_readings_count(excluded_user_ids: set[int] | None = None) -> int:
+    return get_readings_count_by_type("card", excluded_user_ids)
 
 
-def get_readings_count_by_type(reading_type: str) -> int:
+def get_readings_count_by_type(
+    reading_type: str,
+    excluded_user_ids: set[int] | None = None,
+) -> int:
+    excluded_clause, excluded_params = build_excluded_users_clause(excluded_user_ids)
+
     with get_connection() as connection:
         cursor = connection.cursor()
         cursor.execute(
-            """
+            f"""
             SELECT COUNT(*)
             FROM readings
             WHERE type = ?
+              {excluded_clause}
             """,
-            (reading_type,),
+            [
+                reading_type,
+                *excluded_params,
+            ],
         )
         row = cursor.fetchone()
 
     return int(row[0])
 
 
-def get_spread_readings_count() -> int:
+def get_spread_readings_count(excluded_user_ids: set[int] | None = None) -> int:
+    excluded_clause, excluded_params = build_excluded_users_clause(excluded_user_ids)
+
     with get_connection() as connection:
         cursor = connection.cursor()
         cursor.execute(
-            """
+            f"""
             SELECT COUNT(*)
             FROM readings
             WHERE type IN ('spread', 'career', 'project')
-            """
+              {excluded_clause}
+            """,
+            excluded_params,
         )
         row = cursor.fetchone()
 

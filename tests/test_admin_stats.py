@@ -95,6 +95,10 @@ class AdminStatsTest(unittest.IsolatedAsyncioTestCase):
                 tzinfo=MOSCOW_TZ,
             )
             create_reading(123, "card", [{"name": "Card"}])
+            create_reading(123, "spread", [{"name": "Admin Spread"}])
+            create_reading(123, "career", [{"name": "Admin Career"}])
+            create_reading(123, "project", [{"name": "Admin Project"}])
+            create_reading(456, "card", [{"name": "User Card"}])
             create_reading(456, "spread", [{"name": "Spread"}])
             create_reading(456, "career", [{"name": "Career"}])
             create_reading(456, "project", [{"name": "Project"}])
@@ -107,8 +111,8 @@ class AdminStatsTest(unittest.IsolatedAsyncioTestCase):
 
         text = message.answer.await_args.args[0]
         self.assertIn("Пользователей всего:</b> 2", text)
-        self.assertIn("Активных за сегодня:</b> 2", text)
-        self.assertIn("Активных за неделю:</b> 2", text)
+        self.assertIn("Активных за сегодня:</b> 1", text)
+        self.assertIn("Активных за неделю:</b> 1", text)
         self.assertIn("Подписаны на утренние напоминания:</b> 1", text)
         self.assertIn("Отписаны от утренних напоминаний:</b> 1", text)
         self.assertIn("Карт дня выдано:</b> 1", text)

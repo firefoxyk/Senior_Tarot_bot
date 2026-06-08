@@ -7,9 +7,9 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, Message, User
 
-from database import is_morning_reminders_subscribed
-from keyboards import cancel_keyboard, main_menu_keyboard, reply_menu_keyboard
+from keyboards import cancel_inline_keyboard, cancel_keyboard
 from services.admins import get_admin_ids
+from services.menu import is_private_chat, send_menu_pair
 from services.timezone import MOSCOW_TZ
 from services.users import save_callback_user, save_message_user
 
@@ -85,27 +85,16 @@ async def send_report_to_admins(message: Message, report_text: str) -> bool:
 
 async def start_report_problem(message: Message, state: FSMContext) -> None:
     await state.set_state(ReportProblem.waiting_for_description)
+    reply_markup = cancel_keyboard() if is_private_chat(message) else cancel_inline_keyboard()
+
     await message.answer(
         REPORT_PROMPT,
-        reply_markup=cancel_keyboard(),
+        reply_markup=reply_markup,
     )
 
 
 async def send_main_menu(message: Message) -> None:
-    notifications_subscribed = True
-
-    if message.from_user:
-        notifications_subscribed = is_morning_reminders_subscribed(message.from_user.id)
-
-    await message.answer(
-        "Выбери действие:",
-        reply_markup=reply_menu_keyboard(notifications_subscribed),
-    )
-
-    await message.answer(
-        "Меню под рукой.",
-        reply_markup=main_menu_keyboard(notifications_subscribed),
-    )
+    await send_menu_pair(message, "Меню под рукой.")
 
 
 @router.message(Command("cancel"), StateFilter(ReportProblem.waiting_for_description))
@@ -120,6 +109,16 @@ async def cancel_report_by_button(message: Message, state: FSMContext) -> None:
     await state.clear()
     await message.answer(REPORT_CANCELLED_TEXT)
     await send_main_menu(message)
+
+
+@router.callback_query(F.data == "cancel_report", StateFilter(ReportProblem.waiting_for_description))
+async def cancel_report_by_callback(callback: CallbackQuery, state: FSMContext) -> None:
+    await state.clear()
+    await callback.answer("Отменено")
+
+    if callback.message:
+        await callback.message.answer(REPORT_CANCELLED_TEXT)
+        await send_main_menu(callback.message)
 
 
 @router.message(F.text.startswith("/"), StateFilter(ReportProblem.waiting_for_description))
